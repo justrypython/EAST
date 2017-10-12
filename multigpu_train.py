@@ -2,6 +2,7 @@ import time
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
+from datetime import datetime
 
 tf.app.flags.DEFINE_integer('input_size', 512, '')
 tf.app.flags.DEFINE_integer('batch_size_per_gpu', 14, '')
@@ -75,28 +76,41 @@ def main(argv=None):
         if not FLAGS.restore:
             tf.gfile.DeleteRecursively(FLAGS.checkpoint_path)
             tf.gfile.MkDir(FLAGS.checkpoint_path)
-
+    
+    print('1.', datetime.now())
     input_images = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='input_images')
+    print('2.', datetime.now())
     input_score_maps = tf.placeholder(tf.float32, shape=[None, None, None, 1], name='input_score_maps')
+    print('3.', datetime.now())
     if FLAGS.geometry == 'RBOX':
         input_geo_maps = tf.placeholder(tf.float32, shape=[None, None, None, 5], name='input_geo_maps')
     else:
         input_geo_maps = tf.placeholder(tf.float32, shape=[None, None, None, 8], name='input_geo_maps')
+    print('4.', datetime.now())
     input_training_masks = tf.placeholder(tf.float32, shape=[None, None, None, 1], name='input_training_masks')
+    print('5.', datetime.now())
 
     global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
+    print('6.', datetime.now())
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step, decay_steps=10000, decay_rate=0.94, staircase=True)
+    print('7.', datetime.now())
     # add summary
     tf.summary.scalar('learning_rate', learning_rate)
+    print('8.', datetime.now())
     opt = tf.train.AdamOptimizer(learning_rate)
+    print('9.', datetime.now())
     # opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
 
 
     # split
     input_images_split = tf.split(input_images, len(gpus))
+    print('10.', datetime.now())
     input_score_maps_split = tf.split(input_score_maps, len(gpus))
+    print('11.', datetime.now())
     input_geo_maps_split = tf.split(input_geo_maps, len(gpus))
+    print('12.', datetime.now())
     input_training_masks_split = tf.split(input_training_masks, len(gpus))
+    print('13.', datetime.now())
 
     tower_grads = []
     reuse_variables = None
@@ -113,27 +127,38 @@ def main(argv=None):
 
                 grads = opt.compute_gradients(total_loss)
                 tower_grads.append(grads)
+    print('14.', datetime.now())
 
     grads = average_gradients(tower_grads)
+    print('15.', datetime.now())
     apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+    print('16.', datetime.now())
 
     summary_op = tf.summary.merge_all()
+    print('17.', datetime.now())
     # save moving average
     variable_averages = tf.train.ExponentialMovingAverage(
         FLAGS.moving_average_decay, global_step)
+    print('18.', datetime.now())
     variables_averages_op = variable_averages.apply(tf.trainable_variables())
+    print('19.', datetime.now())
     # batch norm updates
     with tf.control_dependencies([variables_averages_op, apply_gradient_op, batch_norm_updates_op]):
         train_op = tf.no_op(name='train_op')
+    print('20.', datetime.now())
 
     saver = tf.train.Saver(tf.global_variables())
+    print('21.', datetime.now())
     summary_writer = tf.summary.FileWriter(FLAGS.checkpoint_path, tf.get_default_graph())
+    print('22.', datetime.now())
 
     init = tf.global_variables_initializer()
+    print('23.', datetime.now())
 
     if FLAGS.pretrained_model_path is not None:
         variable_restore_op = slim.assign_from_checkpoint_fn(FLAGS.pretrained_model_path, slim.get_trainable_variables(),
                                                              ignore_missing_vars=True)
+    print('24.', datetime.now())
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
         if FLAGS.restore:
             print('continue training from previous checkpoint')

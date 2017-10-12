@@ -105,3 +105,13 @@ ENV/
 
 # result files for demo
 static/results
+resnet_v1_50.ckpt
+results/
+results_1/
+results_2/
+results_3/
+data
+east_icdar2015_resnet_v1_50_rbox.zip
+tmp
+0/
+

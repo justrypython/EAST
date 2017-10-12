@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 import locality_aware_nms as nms_locality
-import lanms
+#import lanms
 
 tf.app.flags.DEFINE_string('test_data_path', '/tmp/ch4_test_images/images/', '')
 tf.app.flags.DEFINE_string('gpu_list', '0', '')
@@ -34,6 +34,27 @@ def get_images():
                     break
     print('Find {} images'.format(len(files)))
     return files
+
+def rescale_image(img, max_side_len):
+    """
+    resize image to a size of max side that is greater than 500 and less than 1000
+    :param img: the resized image
+    :param max_side_len: the max side length
+    :return: the resized image and the resize ratio
+    """
+    h, w = img.shape[:2]
+    resize_w = w
+    resize_h = h
+    factor = max(float(h)/max_side_len, float(w)/max_side_len)
+    resize_w = int(resize_w / factor)
+    resize_h = int(resize_h / factor)
+    
+    img = cv2.resize(img, (resize_w, resize_h))
+    
+    ratio_h = resize_h / float(h)
+    ratio_w = resize_w / float(w)
+    
+    return img, (ratio_h, ratio_w)
 
 
 def resize_image(im, max_side_len=2400):
@@ -94,8 +115,8 @@ def detect(score_map, geo_map, timer, score_map_thresh=0.8, box_thresh=0.1, nms_
     timer['restore'] = time.time() - start
     # nms part
     start = time.time()
-    # boxes = nms_locality.nms_locality(boxes.astype(np.float64), nms_thres)
-    boxes = lanms.merge_quadrangle_n9(boxes.astype('float32'), nms_thres)
+    boxes = nms_locality.nms_locality(boxes.astype(np.float64), nms_thres)
+    # boxes = lanms.merge_quadrangle_n9(boxes.astype('float32'), nms_thres)
     timer['nms'] = time.time() - start
 
     if boxes.shape[0] == 0:
@@ -123,7 +144,7 @@ def sort_poly(p):
 def main(argv=None):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
-
+    reshape_sizes = [500, 750, 1000, 625, 875]
 
     try:
         os.makedirs(FLAGS.output_dir)
@@ -150,22 +171,40 @@ def main(argv=None):
             for im_fn in im_fn_list:
                 im = cv2.imread(im_fn)[:, :, ::-1]
                 start_time = time.time()
-                im_resized, (ratio_h, ratio_w) = resize_image(im)
-
-                timer = {'net': 0, 'restore': 0, 'nms': 0}
-                start = time.time()
-                score, geometry = sess.run([f_score, f_geometry], feed_dict={input_images: [im_resized]})
-                timer['net'] = time.time() - start
-
-                boxes, timer = detect(score_map=score, geo_map=geometry, timer=timer)
-                print('{} : net {:.0f}ms, restore {:.0f}ms, nms {:.0f}ms'.format(
-                    im_fn, timer['net']*1000, timer['restore']*1000, timer['nms']*1000))
-
-                if boxes is not None:
-                    boxes = boxes[:, :8].reshape((-1, 4, 2))
-                    boxes[:, :, 0] /= ratio_w
-                    boxes[:, :, 1] /= ratio_h
-
+                boxes_tmp = []
+                boxes_final = []
+                for reshape_size in reshape_sizes:
+                    im_resized0, (ratio_h0, ratio_w0) = rescale_image(im, reshape_size)
+                    im_resized1, (ratio_h1, ratio_w1) = resize_image(im_resized0)
+    
+                    timer = {'net': 0, 'restore': 0, 'nms': 0}
+                    start = time.time()
+                    score, geometry = sess.run([f_score, f_geometry], feed_dict={input_images: [im_resized1]})
+                    timer['net'] = time.time() - start
+    
+                    boxes, timer = detect(score_map=score, geo_map=geometry, timer=timer)
+                    print('{} : net {:.0f}ms, restore {:.0f}ms, nms {:.0f}ms'.format(
+                        im_fn, timer['net']*1000, timer['restore']*1000, timer['nms']*1000))
+    
+                    if boxes is not None:
+                        boxes = boxes[:, :8].reshape((-1, 4, 2))
+                        boxes[:, :, 0] /= ratio_w0 * ratio_w1
+                        boxes[:, :, 1] /= ratio_h0 * ratio_h1
+                    
+                    boxes_tmp = []
+                    if boxes is None:
+                        continue
+                    for box in boxes:
+                        box = sort_poly(box.astype(np.int32))
+                        if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
+                            continue
+                        boxes_tmp.append(box.tolist())
+                    if len(boxes_tmp) == 8:
+                        boxes_final = boxes_tmp
+                        break
+                    elif len(boxes_tmp) > len(boxes_final):
+                        boxes_final = boxes_tmp
+                boxes = np.array(boxes_final)
                 duration = time.time() - start_time
                 print('[timing] {}'.format(duration))
 
