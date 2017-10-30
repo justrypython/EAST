@@ -40,13 +40,13 @@ def calc_new_xy(boxes):
     dis = calc_dis(box1[4:6], box1[6:])
     area0 = area(box0)
     area1 = area(box1)
-    return x/dis, y/dis, area0/area1
+    return x/dis, y/dis
 
 if __name__ == '__main__':
     path = '/media/zhaoke/b0685ee4-63e3-4691-ae02-feceacff6996/data/'
     paths = os.listdir(path)
     paths = [i for i in paths if '.txt' in i]
-    boxes = np.empty((640000, 9))
+    boxes = np.empty((800000, 9))
     cnt = 0
     for txt in paths:
         f = open(path+txt, 'r')
@@ -54,11 +54,16 @@ if __name__ == '__main__':
         f.close()
         lines = [i.replace('\n', '').split(',') for i in lines]
         lines = np.array(lines).astype(np.uint32)
-        boxes[cnt*8:cnt*8+8] = lines
+        boxes[cnt*10:cnt*10+len(lines)] = lines
         cnt += 1
-    idboxes = boxes[boxes[:, 8]==8]
-    idboxes = np.tile(idboxes[:, :8], (1, 8))
+    zeros = boxes==[0, 0, 0, 0, 0, 0, 0, 0, 0]
+    zeros_labels = zeros.all(axis=1)
+    zeros_labels = np.where(zeros_labels==True)
+    idboxes = boxes[boxes[:, 8]==7]
+    idboxes = np.tile(idboxes[:, :8], (1, 10))
     idboxes = idboxes.reshape((-1, 8))
+    boxes = np.delete(boxes, zeros_labels[0], axis=0)
+    idboxes = np.delete(idboxes, zeros_labels[0], axis=0)
     boxes_idboxes = np.concatenate((boxes[:, :8], idboxes), axis=1)
     start_time = datetime.datetime.now()
     print start_time
