@@ -112,3 +112,4 @@ east_icdar2015_resnet_v1_50_rbox.zip
 tmp
 0/
 clf.pickle
+clf*.pickle

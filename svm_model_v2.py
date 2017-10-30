@@ -43,6 +43,7 @@ def calc_new_xy(boxes):
     return x/dis, y/dis
 
 if __name__ == '__main__':
+    test = True
     path = '/media/zhaoke/b0685ee4-63e3-4691-ae02-feceacff6996/data/'
     paths = os.listdir(path)
     paths = [i for i in paths if '.txt' in i]
@@ -69,13 +70,24 @@ if __name__ == '__main__':
     print start_time
     new_xy = np.apply_along_axis(calc_new_xy, 1, boxes_idboxes)
     end_time = datetime.datetime.now()
-    print end_time - start_time    
-    clf = SVC()
-    start_time = datetime.datetime.now()
-    print start_time
-    clf.fit(new_xy[:], boxes[:, 8])
-    end_time = datetime.datetime.now()
     print end_time - start_time
-    with open('clf.pickle', 'wb') as f:
-        pickle.dump(clf, f)
-    print 'end'
+    if test:
+        with open('clf_address_v2.pickle', 'rb') as f:
+            clf = pickle.load(f)
+        cnt = 0
+        for i, xy in enumerate(new_xy):
+            cls = int(clf.predict([xy])[0])
+            if cls == int(boxes[i, 8]):
+                cnt += 1
+            if i % 10000 == 0 and i != 0:
+                print i, ':', float(cnt) / i
+    else:
+        clf = SVC()
+        start_time = datetime.datetime.now()
+        print start_time
+        clf.fit(new_xy[:], boxes[:, 8])
+        end_time = datetime.datetime.now()
+        print end_time - start_time
+        with open('clf.pickle', 'wb') as f:
+            pickle.dump(clf, f)
+        print 'end'
