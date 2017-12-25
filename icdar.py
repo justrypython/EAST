@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from data_util import GeneratorEnqueuer
 
-tf.app.flags.DEFINE_string('training_data_path', '/data/ocr/icdar2015/',
+tf.app.flags.DEFINE_string('training_data_path', '/media/zhaoke/b0685ee4-63e3-4691-ae02-feceacff6996/data/',
                            'training dataset to use')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
