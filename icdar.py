@@ -739,4 +739,9 @@ def get_batch(num_workers, **kwargs):
 
 
 if __name__ == '__main__':
-    pass
+    a = generator(input_size=512, batch_size=1, vis=False)
+    cnt = 0
+    for i in range(100):
+        img, a, y_true, b, c = next(a)
+        cnt += 1
+    print 'end'
