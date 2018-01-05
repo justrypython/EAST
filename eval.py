@@ -139,12 +139,20 @@ def sort_poly(p):
         return p
     else:
         return p[[0, 3, 2, 1]]
+    
+def dst_exist(path):
+    a = path[::-1].find('/')
+    b = path[-a:]
+    if b in os.listdir(FLAGS.output_dir):
+        return True
+    else:
+        return False
 
 
 def main(argv=None):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_list
-    reshape_sizes = [1280, 1000]
+    reshape_sizes = [488]
 
     try:
         os.makedirs(FLAGS.output_dir)
@@ -169,12 +177,16 @@ def main(argv=None):
 
             im_fn_list = get_images()
             for im_fn in im_fn_list:
+                if dst_exist(im_fn):
+                    continue
                 im = cv2.imread(im_fn)[:, :, ::-1]
                 start_time = time.time()
                 boxes_tmp = []
                 boxes_final = []
                 for reshape_size in reshape_sizes:
                     im_resized0, (ratio_h0, ratio_w0) = rescale_image(im, reshape_size)
+                    if im_resized0.shape[0] < 64 or im_resized0.shape[1] < 64:
+                        continue
                     im_resized1, (ratio_h1, ratio_w1) = resize_image(im_resized0)
     
                     timer = {'net': 0, 'restore': 0, 'nms': 0}
@@ -224,7 +236,7 @@ def main(argv=None):
                             f.write('{},{},{},{},{},{},{},{}\r\n'.format(
                                 box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1],
                             ))
-                            cv2.polylines(im[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=1)
+                            cv2.polylines(im[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0), thickness=3)
                 if not FLAGS.no_write_images:
                     img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
                     cv2.imwrite(img_path, im[:, :, ::-1])

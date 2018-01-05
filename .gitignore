@@ -114,3 +114,5 @@ tmp
 clf.pickle
 clf*.pickle
 testimg/
+img_table/
+testimg1/
