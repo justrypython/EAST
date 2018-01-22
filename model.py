@@ -23,7 +23,7 @@ def mean_image_subtraction(images, means=[123.68, 116.78, 103.94]):
     '''
     num_channels = images.get_shape().as_list()[-1]
     if len(means) != num_channels:
-      raise ValueError('len(means) must match the number of channels')
+        raise ValueError('len(means) must match the number of channels')
     channels = tf.split(axis=3, num_or_size_splits=num_channels, value=images)
     for i in range(num_channels):
         channels[i] -= means[i]
@@ -76,7 +76,15 @@ def model(images, weight_decay=1e-5, is_training=True):
             F_score = slim.conv2d(g[3], 1, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None)
             # 4 channel of axis aligned bbox and 1 channel rotation angle
             geo_map = slim.conv2d(g[3], 4, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None) * FLAGS.text_scale
-            angle_map = (slim.conv2d(g[3], 1, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None) - 0.5) * np.pi/2 # angle is between [-45, 45]
+            #angle_map = (slim.conv2d(g[3], 1, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None) - 0.5) * np.pi/2 # angle is between [-45, 45]
+            angle_map_0 = (slim.conv2d(g[3], 1, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None) - 0.5) * np.pi/2 # angle is between [-45, 45]
+            angle_map_1 = (slim.conv2d(g[3], 1, 1, activation_fn=tf.nn.sigmoid, normalizer_fn=None) - 0.5) * np.pi/2
+            geo_a, geo_b = geo_map[:, :, :, ::2], geo_map[:, :, :, 1::2]
+            geo_a_sum = tf.reduce_sum(geo_a, axis=-1)
+            geo_b_sum = tf.reduce_sum(geo_b, axis=-1)
+            geo_greater = tf.greater(geo_a_sum, geo_b_sum)
+            geo_greater = tf.expand_dims(geo_greater, -1)
+            angle_map = tf.where(geo_greater, angle_map_0, angle_map_1)
             F_geometry = tf.concat([geo_map, angle_map], axis=-1)
 
     return F_score, F_geometry

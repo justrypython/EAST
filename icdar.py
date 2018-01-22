@@ -364,7 +364,15 @@ def sort_rectangle(poly):
         # 找到最低点右边的点
         p_lowest_right = (p_lowest - 1) % 4
         p_lowest_left = (p_lowest + 1) % 4
-        angle = np.arctan(-(poly[p_lowest][1] - poly[p_lowest_right][1])/(poly[p_lowest][0] - poly[p_lowest_right][0]))
+        right_is_longer = np.sum(np.square(poly[p_lowest]-poly[p_lowest_right])) >\
+            np.sum(np.square(poly[p_lowest]-poly[p_lowest_left]))
+        #angle = np.arctan(-(poly[p_lowest][1] - poly[p_lowest_right][1])/(poly[p_lowest][0] - poly[p_lowest_right][0]))
+        if right_is_longer:
+            angle = np.arctan(-(poly[p_lowest][1] - poly[p_lowest_right][1])/(poly[p_lowest][0] - poly[p_lowest_right][0]))
+        else:
+            angle = np.arctan((poly[p_lowest][1] - poly[p_lowest_left][1])/(poly[p_lowest][0] - poly[p_lowest_left][0]))
+            angle = np.pi/2 - angle
+        #print(np.sqrt(np.square(angle1-angle)))
         # assert angle > 0
         if angle <= 0:
             print(angle, poly[p_lowest], poly[p_lowest_right])
@@ -582,12 +590,15 @@ def generate_rbox(im_size, polys, tags):
 
 def generator(input_size=512, batch_size=32,
               background_ratio=3./8,
-              random_scale=np.array([0.5, 1, 2.0, 3.0]),
+              #random_scale=np.array([0.5, 1, 2.0, 3.0]),
+              random_scale=np.array([0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+                                     1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0]),
               vis=False):
     image_list = np.array(get_images())
     print('{} training images in {}'.format(
         image_list.shape[0], FLAGS.training_data_path))
     index = np.arange(0, image_list.shape[0])
+    #ratios = []
     while True:
         np.random.shuffle(index)
         images = []
@@ -655,6 +666,12 @@ def generator(input_size=512, batch_size=32,
                     text_polys[:, :, 1] *= resize_ratio_3_y
                     new_h, new_w, _ = im.shape
                     score_map, geo_map, training_mask = generate_rbox((new_h, new_w), text_polys, text_tags)
+                    #for text_poly in text_polys:
+                        #ratios.append(min(np.sqrt(np.sum(np.square(text_poly[0]-text_poly[1]))),
+                                          #np.sqrt(np.sum(np.square(text_poly[0]-text_poly[-1]))))/512.0)
+                        #if len(ratios)==100000:
+                            #a = np.array(ratios)
+                            #np.savetxt('ratios.txt', a)
 
                 if vis:
                     fig, axs = plt.subplots(3, 2, figsize=(20, 30))
@@ -741,7 +758,8 @@ def get_batch(num_workers, **kwargs):
 if __name__ == '__main__':
     a = generator(input_size=512, batch_size=1, vis=False)
     cnt = 0
-    for i in range(100):
-        img, a, y_true, b, c = next(a)
+    #for i in range(100):
+    while True:
+        img, d, y_true, b, c = next(a)
         cnt += 1
     print 'end'
